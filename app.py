@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import streamlit as st
 import os
 from PIL import Image
-import pdf2image
+import fitz  # PyMuPDF
 import google.generativeai as genai
 import io
 import base64
@@ -24,16 +24,19 @@ def get_gemini_response(input_text, pdf_content, prompt):
 def input_pdf_setup(uploaded_file):
     try:
         if uploaded_file is not None:
-            images = pdf2image.convert_from_bytes(uploaded_file.read())
-
-            # Extract the first page of the PDF
-            first_page = images[0]
-
+            # Open the PDF using PyMuPDF
+            pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+            
+            # Extract the first page as an image
+            first_page = pdf_document[0]
+            pix = first_page.get_pixmap()
+            
             # Convert the image to a byte array
             img_byte_arr = io.BytesIO()
-            first_page.save(img_byte_arr, format='JPEG')
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            img.save(img_byte_arr, format="JPEG")
             img_byte_arr = img_byte_arr.getvalue()
-
+            
             # Prepare the content for the Gemini API
             pdf_parts = [
                 {
